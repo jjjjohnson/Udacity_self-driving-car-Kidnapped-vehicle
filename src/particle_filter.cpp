@@ -24,7 +24,7 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
 	normal_distribution<double> dist_x(x, std[0]);
 	normal_distribution<double> dist_y(y, std[1]);
 	normal_distribution<double> dist_psi(theta, std[2]);
-    num_particles = 1000;
+    num_particles = 1;
 	for (int i=0; i < num_particles; i++){
 		Particle p;
 		p.id = i;
@@ -35,8 +35,6 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
 		particles.push_back(p);
 	}
 	is_initialized = true;
-    weights.clear();
-
 }
 
 void ParticleFilter::prediction(double delta_t, double std_pos[], double velocity, double yaw_rate) {
@@ -110,7 +108,7 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
             double distance = dist(landmark.x_f, landmark.y_f, particle.x, particle.y);
             if (distance <= sensor_range){
                 inrange_landmarks.push_back(LandmarkObs{ landmark.id_i,landmark.x_f,landmark.y_f });
-                idx2landmark.insert(std::make_pair(landmark.id_i, landmark));
+                idx2landmark.insert(std::make_pair(landmark.id_i, landmark)); // log the landmark so that it can be used later
             }
         }
 
@@ -134,7 +132,7 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
         }
 
 //        cout << "New particle:" << endl;
-//        cout << particle.weight << endl;
+        cout << "x " << particle.x << " y " << particle.y << endl;
         weights.push_back(particle.weight);
 
     }
