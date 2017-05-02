@@ -24,7 +24,7 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
 	normal_distribution<double> dist_x(x, std[0]);
 	normal_distribution<double> dist_y(y, std[1]);
 	normal_distribution<double> dist_psi(theta, std[2]);
-    num_particles = 1;
+    num_particles = 1000;
 	for (int i=0; i < num_particles; i++){
 		Particle p;
 		p.id = i;
@@ -34,6 +34,7 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
 		p.weight = 1.0;
 		particles.push_back(p);
 	}
+
 	is_initialized = true;
 }
 
@@ -43,22 +44,19 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
 	//  http://en.cppreference.com/w/cpp/numeric/random/normal_distribution
 	//  http://www.cplusplus.com/reference/random/default_random_engine/
 	default_random_engine gen;
-	// Creates a normal (Gaussian) distribution for x, y and yaw
-	normal_distribution<double> dist_x(0, std_pos[0]);
-	normal_distribution<double> dist_y(0, std_pos[1]);
-	normal_distribution<double> dist_yaw(0, std_pos[2]);
-
 	for (auto& p:particles){
+        normal_distribution<double> dist_x(p.x, std_pos[0]);
+        normal_distribution<double> dist_y(p.y, std_pos[1]);
+        normal_distribution<double> dist_yaw(p.theta, std_pos[2]);
 		if (yaw_rate < 1e-6){
-			p.x = p.x + velocity*delta_t*cos(p.theta) + dist_x(gen);
-			p.y = p.y + velocity*delta_t*sin(p.theta) + dist_y(gen);
-			p.theta = p.theta + dist_yaw(gen);
+			p.x = velocity*delta_t*cos(p.theta) + dist_x(gen);
+			p.y = velocity*delta_t*sin(p.theta) + dist_y(gen);
+			p.theta = dist_yaw(gen);
 		} else{
-			p.x = p.x + velocity/yaw_rate*(sin(p.theta + yaw_rate * delta_t) - sin(p.theta)) + dist_x(gen);
-			p.y = p.y + velocity/yaw_rate*(cos(p.theta) - cos(p.theta + yaw_rate * delta_t)) + dist_y(gen);
-			p.theta = p.theta + yaw_rate * delta_t + dist_yaw(gen);
+			p.x = velocity/yaw_rate*(sin(p.theta + yaw_rate * delta_t) - sin(p.theta)) + dist_x(gen);
+			p.y = velocity/yaw_rate*(cos(p.theta) - cos(p.theta + yaw_rate * delta_t)) + dist_y(gen);
+			p.theta = yaw_rate * delta_t + dist_yaw(gen);
 		}
-
 	}
 }
 
@@ -93,12 +91,12 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 	//   for the fact that the map's y-axis actually points downwards.)
 	//   http://planning.cs.uiuc.edu/node99.html
     for (auto& particle:particles){
-        vector <LandmarkObs> transformed_obs;
-        for (auto observation : observations)
+//        vector <LandmarkObs> transformed_obs;
+        for (auto& observation : observations)
         {
             observation.x = observation.x * cos(particle.theta) - observation.y * sin(particle.theta) + particle.x;
             observation.y = observation.x * sin(particle.theta) + observation.y * cos(particle.theta) + particle.y;
-            transformed_obs.push_back(observation);
+//            transformed_obs.push_back(observation);
         }
 
         std::vector<LandmarkObs> inrange_landmarks;
@@ -112,14 +110,15 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
             }
         }
 
-        dataAssociation(inrange_landmarks, transformed_obs);
+//        dataAssociation(inrange_landmarks, transformed_obs);
+        dataAssociation(inrange_landmarks, observations);
 
 //        cout << "New particle:" << endl;
 //        for (auto&ob:transformed_obs){
 //            cout << ob.id << endl;
 //        }
-        particle.weight = 1.0; //reset thr weight of the particle
-        for (const auto observation:transformed_obs){
+        particle.weight = 1.0; //reset the weight of the particle
+        for (const auto observation:observations){
             double mu_x = idx2landmark[observation.id].x_f;
             double mu_y = idx2landmark[observation.id].y_f;
             double x = observation.x;
@@ -132,7 +131,7 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
         }
 
 //        cout << "New particle:" << endl;
-        cout << "x " << particle.x << " y " << particle.y << endl;
+//        cout << "x " << particle.x << " y " << particle.y << endl;
         weights.push_back(particle.weight);
 
     }
