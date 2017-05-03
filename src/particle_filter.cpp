@@ -37,7 +37,6 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
 	}
     weights.resize(num_particles);
 	is_initialized = true;
-//    cout << "initialized" << endl;
 }
 
 void ParticleFilter::prediction(double delta_t, double std_pos[], double velocity, double yaw_rate) {
@@ -45,21 +44,28 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
 	// NOTE: When adding noise you may find std::normal_distribution and std::default_random_engine useful.
 	//  http://en.cppreference.com/w/cpp/numeric/random/normal_distribution
 	//  http://www.cplusplus.com/reference/random/default_random_engine/
+//    cout << "delta_t: " << delta_t << endl;
 	default_random_engine gen;
+    double x, y, theta;
 	for (auto& p:particles){
-        normal_distribution<double> dist_x(p.x, std_pos[0]);
-        normal_distribution<double> dist_y(p.y, std_pos[1]);
-        normal_distribution<double> dist_yaw(p.theta, std_pos[2]);
-		if (yaw_rate < 1e-6){
-			p.x = velocity*delta_t*cos(p.theta) + dist_x(gen);
-			p.y = velocity*delta_t*sin(p.theta) + dist_y(gen);
-			p.theta = dist_yaw(gen);
+
+		if (yaw_rate < 1e-3){
+			x = p.x + velocity*delta_t*cos(p.theta);
+			y =  p.y + velocity*delta_t*sin(p.theta);
+			theta = p.theta;
 		} else{
-			p.x = velocity/yaw_rate*(sin(p.theta + yaw_rate * delta_t) - sin(p.theta)) + dist_x(gen);
-			p.y = velocity/yaw_rate*(cos(p.theta) - cos(p.theta + yaw_rate * delta_t)) + dist_y(gen);
-			p.theta = yaw_rate * delta_t + dist_yaw(gen);
+			x = p.x + velocity/yaw_rate*(sin(p.theta + yaw_rate * delta_t) - sin(p.theta));
+			y = p.y + velocity/yaw_rate*(cos(p.theta) - cos(p.theta + yaw_rate * delta_t));
+			theta = yaw_rate * delta_t + p.theta;
 		}
-	}
+        normal_distribution<double> dist_x(x, std_pos[0]);
+        normal_distribution<double> dist_y(y, std_pos[1]);
+        normal_distribution<double> dist_yaw(theta, std_pos[2]);
+
+        p.x = dist_x(gen);
+        p.y = dist_y(gen);
+        p.theta = dist_yaw(gen);
+    }
 }
 
 void ParticleFilter::dataAssociation(std::vector<LandmarkObs> predicted, std::vector<LandmarkObs>& observations) {
@@ -96,11 +102,13 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 	//   3.33. Note that you'll need to switch the minus sign in that equation to a plus to account 
 	//   for the fact that the map's y-axis actually points downwards.)
 	//   http://planning.cs.uiuc.edu/node99.html
+    vector<LandmarkObs> transformed_obs;
+    transformed_obs.resize(observations.size());
+
     for (int i=0; i < num_particles; ++i){
 
         Particle &particle = particles[i]; // reference of a particle
-        vector<LandmarkObs> transformed_obs;
-        transformed_obs.resize(observations.size());
+
 
         for (int j=0; j < observations.size(); ++j)
         {
@@ -127,11 +135,7 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
         if (inrange_landmarks.size() > 0) {
 
             dataAssociation(inrange_landmarks, transformed_obs);
-//        dataAssociation(map_landmarks, observations);
-//            for (auto& observation : observations){
-//                cout << "related observation" << endl;
-//                cout << observation.id << endl;
-//            }
+
             particle.weight = 1.0; //reset the weight of the particle
             for (const auto observation:transformed_obs) {
                 double mu_x = idx2landmark[observation.id].x_f;
@@ -144,9 +148,6 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
                 double y_diff = (y - mu_y) * (y - mu_y) / (2 * s_y * s_y);
                 particle.weight *= 1 / (2 * M_PI * s_x * s_y) * exp(-(x_diff + y_diff));
             }
-//        cout << "New particle:" << endl;
-//        cout << particle.weight << endl;
-//        cout << "x " << particle.x << " y " << particle.y << endl;
             weights[i] = particle.weight;
         }else{
             weights[i] = 0.0;
