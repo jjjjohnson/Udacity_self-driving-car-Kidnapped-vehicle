@@ -24,7 +24,7 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
 	normal_distribution<double> dist_x(x, std[0]);
 	normal_distribution<double> dist_y(y, std[1]);
 	normal_distribution<double> dist_psi(theta, std[2]);
-    num_particles = 2000;
+    num_particles = 100;
     particles.resize(num_particles);
 	for (int i=0; i < num_particles; i++){
 		Particle p;
@@ -49,7 +49,7 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
     double x, y, theta;
 	for (auto& p:particles){
 
-		if (yaw_rate < 1e-3){
+		if (yaw_rate == 0){
 			x = p.x + velocity*delta_t*cos(p.theta);
 			y =  p.y + velocity*delta_t*sin(p.theta);
 			theta = p.theta;
@@ -77,7 +77,6 @@ void ParticleFilter::dataAssociation(std::vector<LandmarkObs> predicted, std::ve
     for (auto& observation:observations){
 		double  min_distance = 99999999.0;
 		for (const auto& p:predicted) {
-//            cout << "Landmarks id: " << p.id << endl;
             double distance = dist(p.x, p.y, observation.x, observation.y);
             if (distance < min_distance){
                 min_distance = distance;
@@ -85,7 +84,6 @@ void ParticleFilter::dataAssociation(std::vector<LandmarkObs> predicted, std::ve
             }
         }
 
-//        cout << "nearest landmark: "<< observation.id << endl;
     }
 }
 
@@ -126,12 +124,11 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
         for (const auto& landmark:map_landmarks.landmark_list){
             double distance = dist(landmark.x_f, landmark.y_f, particle.x, particle.y);
             if (distance <= sensor_range){
-//                cout << "In range Landmarks id: " << landmark.id_i << endl;
                 inrange_landmarks.push_back(LandmarkObs{ landmark.id_i,landmark.x_f,landmark.y_f });
                 idx2landmark.insert(std::make_pair(landmark.id_i, landmark)); // log the landmark so that it can be used later
             }
         }
-//        cout << "size of inrange_landmarks " << inrange_landmarks.size() << endl;
+
         if (inrange_landmarks.size() > 0) {
 
             dataAssociation(inrange_landmarks, transformed_obs);
