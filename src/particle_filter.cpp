@@ -24,7 +24,7 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
 	normal_distribution<double> dist_x(x, std[0]);
 	normal_distribution<double> dist_y(y, std[1]);
 	normal_distribution<double> dist_psi(theta, std[2]);
-    num_particles = 100;
+    num_particles = 10;
     particles.resize(num_particles);
 	for (int i=0; i < num_particles; i++){
 		Particle p;
@@ -48,8 +48,9 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
 	default_random_engine gen;
     double x, y, theta;
 	for (auto& p:particles){
-
-		if (yaw_rate == 0){
+//        cout << "yaw_rate: " << yaw_rate << endl;
+		if (fabs(yaw_rate) < 1e-6){
+//            cout << "Yaw rate is zero!" << endl;
 			x = p.x + velocity*delta_t*cos(p.theta);
 			y =  p.y + velocity*delta_t*sin(p.theta);
 			theta = p.theta;
